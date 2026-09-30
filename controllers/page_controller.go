@@ -1,17 +1,13 @@
 package controllers
 
-import (
-	beego "github.com/beego/beego/v2/server/web"
-)
-
 // PageController: সব HTML (SSR) পেজ।
 type PageController struct {
-	beego.Controller
+	BaseController
 }
 
 // GET /
 func (c *PageController) Home() {
-	c.Ctx.WriteString("home page (stub)")
+	c.RenderPage("home.tpl", "Find events in your city")
 }
 
 // GET /events?city=Toronto&countryCode=CA

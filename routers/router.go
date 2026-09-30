@@ -7,6 +7,7 @@ import (
 )
 
 func init() {
+	
 	//  Frontend page route 
 	beego.Router("/", &controllers.PageController{}, "get:Home")
 	beego.Router("/events", &controllers.PageController{}, "get:Listing")
