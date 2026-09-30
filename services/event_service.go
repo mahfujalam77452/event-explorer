@@ -25,6 +25,15 @@ const (
 // Categories: How we will the categories in listing page
 var Categories = []string{CategoryMusic, CategorySports}
 
+// categoryResult represents the result produced by a goroutine.
+// This result is sent through a channel.
+type categoryResult struct {
+	index    int    // Position in the Categories list, used to preserve the original order.
+	category string
+	events   []models.Event
+	err      error
+}
+
 var countryCodePattern = regexp.MustCompile(`^[A-Za-z]{2}$`)
 
 // Validate city and countryCode 
@@ -56,28 +65,67 @@ func NewEventService(client *http.Client, baseURL, apiKey string, perCategory in
 	}
 }
 
-// GetListing returns sections for two categories.
-// If one category fails, that section contains an Error while the other remains intact.
-
+// GetListing fetches both categories concurrently.
+// If one category fails, that section contains an error while the other section remains available.
 func (s *EventService) GetListing(ctx context.Context, city, country string) []models.Section {
 	start := time.Now()
-	sections := make([]models.Section, 0, len(Categories))
 
-	for _, category := range Categories {
-		section := models.Section{Category: category}
+	// Buffered channel with a capacity equal to the number of goroutines.
+	// This prevents goroutines from getting blocked while sending their results
+	// and helps avoid goroutine leaks.
+	results := make(chan categoryResult, len(Categories))
 
-		events, err := s.fetchCategory(ctx, city, country, category)
-		if err != nil {
-			log.Printf("[events] %s for %s,%s failed: %v", category, city, country, err)
-			section.Error = friendlyError(category, err)
+	// Step 1: Start all goroutines first without waiting for any of them to finish.
+	for i, category := range Categories {
+		go s.fetchCategoryAsync(ctx, i, category, city, country, results)
+	}
+	log.Printf("[events] started %d goroutines for %s,%s", len(Categories), city, country)
+
+	// Step 2: Collect exactly one result from the channel for each category.
+	sections := make([]models.Section, len(Categories))
+	for range Categories {
+		r := <-results
+
+		section := models.Section{Category: r.category}
+		if r.err != nil {
+			log.Printf("[events] %s for %s,%s failed: %v", r.category, city, country, r.err)
+			section.Error = friendlyError(r.category, r.err)
 		} else {
-			section.Events = events
+			section.Events = r.events
 		}
-		sections = append(sections, section)
+
+		// Store the section at its original index, regardless of the order
+		// in which the goroutines finish.
+		sections[r.index] = section
 	}
 
 	log.Printf("[events] listing %s,%s built in %s", city, country, time.Since(start).Round(time.Millisecond))
 	return sections
+}
+
+// fetchCategoryAsync runs inside a goroutine and always sends exactly one result to the channel.
+func (s *EventService) fetchCategoryAsync(
+	ctx context.Context, index int, category, city, country string, out chan<- categoryResult,
+) {
+	res := categoryResult{index: index, category: category}
+
+	// Recover from any panic so that it does not crash the entire server.
+	// The deferred function also guarantees that a result is sent to the channel,
+	// preventing the receiver from waiting indefinitely.
+	defer func() {
+		if r := recover(); r != nil {
+			res.events = nil
+			res.err = fmt.Errorf("panic in %s worker: %v", category, r)
+		}
+		out <- res
+	}()
+
+	begin := time.Now()
+	log.Printf("[events] %s: fetching...", category)
+
+	res.events, res.err = s.fetchCategory(ctx, city, country, category)
+
+	log.Printf("[events] %s: done in %s", category, time.Since(begin).Round(time.Millisecond))
 }
 
 // fetchCategory sends a single request to Ticketmaster for a category.
