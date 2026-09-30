@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"errors"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -101,7 +102,41 @@ func (s *EventService) fetchCategory(ctx context.Context, city, country, categor
 	}
 	return resp.ToEvents(s.perCategory), nil
 }
+// GetEvent fetches the complete details of an event directly from Ticketmaster
+// using GET /events/{id}.json.
+// It fetches the event by ID instead of relying on the listing, which supports direct links.
+func (s *EventService) GetEvent(ctx context.Context, id string) (*models.Event, error) {
+	// Validate the ID before using it in the URL to prevent path injection.
+	if !models.IsValidEventID(id) {
+		return nil, models.ErrInvalidEventID
+	}
 
+	query := url.Values{}
+	query.Set("apikey", s.apiKey)
+
+	endpoint := s.baseURL + "/events/" + url.PathEscape(id) + ".json?" + query.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var raw models.TMEvent
+	if err := utils.DoJSON(s.client, req, &raw); err != nil {
+		var httpErr *utils.HTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, models.ErrEventNotFound
+		}
+		return nil, err
+	}
+
+	event := raw.ToEvent()
+	if err := event.Validate(); err != nil {
+		// Ticketmaster responded, but the event data is not usable.
+		return nil, models.ErrEventNotFound
+	}
+	return &event, nil
+}
 // friendlyError for user
 func friendlyError(category string, err error) string {
 	if utils.IsTimeout(err) {
