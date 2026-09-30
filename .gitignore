@@ -1,0 +1,6 @@
+.env
+*.exe
+event-explorer
+lastupdate.tmp
+.idea/
+.vscode/
