@@ -517,3 +517,134 @@ func TestValidateCityQuery(t *testing.T) {
 		})
 	}
 }
+
+
+// ---------- Cache invalidation by category ----------
+
+func TestNormalizeCategory(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+		ok   bool
+	}{
+		{"Music", "Music", true},
+		{"music", "Music", true},
+		{"  SPORTS ", "Sports", true},
+		{"Sports", "Sports", true},
+		{"", "", false},
+		{"Theatre", "", false},
+		{"Music,Sports", "", false},
+	}
+	for _, tc := range tests {
+		got, ok := NormalizeCategory(tc.in)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("NormalizeCategory(%q) = (%q, %t), want (%q, %t)", tc.in, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+func TestInvalidateCategory_DeletesOnlyThatCategory(t *testing.T) {
+	logs := captureLog(t)
+	var hits atomic.Int32
+
+	svc, cache := newTestEventService(t, 5*time.Second, func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		writeJSON(w, tmListJSON(manyEvents(categoryOf(r), 6)...))
+	})
+	ctx := context.Background()
+
+	svc.GetListing(ctx, "Toronto", "CA")
+	svc.GetListing(ctx, "London", "GB")
+	if cache.Len() != 4 || hits.Load() != 4 {
+		t.Fatalf("setup: want 4 entries and 4 requests, got %d entries, %d requests", cache.Len(), hits.Load())
+	}
+
+	// The same cache entry must be found even when lowercase values are provided.
+	key, deleted, err := svc.InvalidateCategory("toronto", "ca", "music")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !deleted {
+		t.Fatal("an existing entry should be reported as deleted")
+	}
+	if key != CacheKey("Toronto", "CA", "Music") {
+		t.Fatalf("unexpected key %q", key)
+	}
+	if cache.Len() != 3 {
+		t.Fatalf("exactly one entry should be removed, %d left", cache.Len())
+	}
+	for _, k := range []string{
+		CacheKey("Toronto", "CA", "Sports"),
+		CacheKey("London", "GB", "Music"),
+		CacheKey("London", "GB", "Sports"),
+	} {
+		if _, ok := cache.Get(k); !ok {
+			t.Fatalf("entry %q must remain", k)
+		}
+	}
+
+	// Fetching Toronto again should make a new request only for Music;
+	// Sports should still be served from the cache.
+	svc.GetListing(ctx, "Toronto", "CA")
+	if hits.Load() != 5 {
+		t.Fatalf("only the deleted category should hit upstream again, requests = %d", hits.Load())
+	}
+
+	out := logs.String()
+	if !strings.Contains(out, `[cache] DELETE key="toronto|CA|music" found=true`) {
+		t.Errorf("missing DELETE log line:\n%s", out)
+	}
+}
+
+func TestInvalidateCategory_NothingCached(t *testing.T) {
+	svc, cache := newTestEventService(t, 5*time.Second, func(w http.ResponseWriter, r *http.Request) {
+		t.Error("deleting must never call the upstream api")
+	})
+	cache.Set(CacheKey("Toronto", "CA", "Music"), []models.Event{{ID: "a", Name: "A"}})
+
+	key, deleted, err := svc.InvalidateCategory("Ottawa", "CA", "Music")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if deleted {
+		t.Fatal("nothing was cached for this key, deleted must be false")
+	}
+	if key != CacheKey("Ottawa", "CA", "Music") {
+		t.Fatalf("unexpected key %q", key)
+	}
+	if cache.Len() != 1 {
+		t.Fatalf("other entries must be untouched, got %d", cache.Len())
+	}
+}
+
+func TestInvalidateCategory_RejectsInvalidInput(t *testing.T) {
+	svc, cache := newTestEventService(t, 5*time.Second, func(w http.ResponseWriter, r *http.Request) {})
+	cache.Set(CacheKey("Toronto", "CA", "Music"), []models.Event{{ID: "a", Name: "A"}})
+
+	tests := []struct {
+		name                    string
+		city, country, category string
+	}{
+		{"empty city", "", "CA", "Music"},
+		{"blank city", "   ", "CA", "Music"},
+		{"city too long", strings.Repeat("a", 101), "CA", "Music"},
+		{"empty country", "Toronto", "", "Music"},
+		{"three letter country", "Toronto", "CAN", "Music"},
+		{"empty category", "Toronto", "CA", ""},
+		{"unknown category", "Toronto", "CA", "Theatre"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, deleted, err := svc.InvalidateCategory(tc.city, tc.country, tc.category)
+			if !errors.Is(err, ErrInvalidInput) {
+				t.Fatalf("want ErrInvalidInput, got %v", err)
+			}
+			if deleted {
+				t.Fatal("invalid input must never delete anything")
+			}
+		})
+	}
+	if cache.Len() != 1 {
+		t.Fatalf("the cache must be untouched, got %d entries", cache.Len())
+	}
+}

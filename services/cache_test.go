@@ -168,3 +168,58 @@ func TestCache_ConcurrentAccessIsSafe(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestCache_DeleteRemovesOnlyThatKey(t *testing.T) {
+	c := NewEventCache()
+	c.Set("a", sampleEvents("a", 1))
+	c.Set("b", sampleEvents("b", 1))
+
+	if !c.Delete("a") {
+		t.Fatal("Delete should report true for an existing key")
+	}
+	if _, ok := c.Get("a"); ok {
+		t.Fatal("key a should be gone")
+	}
+	if _, ok := c.Get("b"); !ok {
+		t.Fatal("key b must be untouched")
+	}
+	if c.Len() != 1 {
+		t.Fatalf("want 1 entry left, got %d", c.Len())
+	}
+}
+
+func TestCache_DeleteMissingKey(t *testing.T) {
+	c := NewEventCache()
+	c.Set("a", sampleEvents("a", 1))
+
+	if c.Delete("nope") {
+		t.Fatal("Delete should report false for a missing key")
+	}
+	if c.Len() != 1 {
+		t.Fatalf("a missing key must not change the cache, got %d entries", c.Len())
+	}
+}
+
+func TestCache_DeleteIsSafeConcurrently(t *testing.T) {
+	c := NewEventCache()
+	var wg sync.WaitGroup
+
+	for g := 0; g < 30; g++ {
+		wg.Add(1)
+		go func(g int) {
+			defer wg.Done()
+			for i := 0; i < 200; i++ {
+				key := fmt.Sprintf("key-%d", i%5)
+				switch (g + i) % 3 {
+				case 0:
+					c.Set(key, sampleEvents("e", 2))
+				case 1:
+					c.Get(key)
+				default:
+					c.Delete(key)
+				}
+			}
+		}(g)
+	}
+	wg.Wait()
+}

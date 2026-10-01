@@ -70,6 +70,7 @@ func NewEventService(client *http.Client, baseURL, apiKey string, perCategory in
 // GetListing fetches both categories concurrently.
 // If one category fails, that section contains an error while the other section remains available.
 func (s *EventService) GetListing(ctx context.Context, city, country string) []models.Section {
+	
 	start := time.Now()
 
 	// Buffered channel with a capacity equal to the number of goroutines.
@@ -157,6 +158,40 @@ func (s *EventService) ClearCache() int {
 	n := s.cache.Clear()
 	log.Printf("[cache] CLEARED %d entries", n)
 	return n
+}
+// NormalizeCategory converts "music" or " SPORTS " to the correct form
+// ("Music" or "Sports").
+// It returns false for any value other than Music or Sports.
+func NormalizeCategory(input string) (string, bool) {
+	input = strings.TrimSpace(input)
+	for _, c := range Categories {
+		if strings.EqualFold(c, input) {
+			return c, true
+		}
+	}
+	return "", false
+}
+
+// InvalidateCategory removes only one cache entry identified by
+// city, country, and category.
+// It returns the key and whether an entry was actually deleted.
+func (s *EventService) InvalidateCategory(city, country, category string) (string, bool, error) {
+	city = strings.TrimSpace(city)
+	country = strings.ToUpper(strings.TrimSpace(country))
+
+	if err := ValidateCityQuery(city, country); err != nil {
+		return "", false, err
+	}
+	canonical, ok := NormalizeCategory(category)
+	if !ok {
+		return "", false, fmt.Errorf("%w: category must be one of %s",
+			ErrInvalidInput, strings.Join(Categories, ", "))
+	}
+
+	key := CacheKey(city, country, canonical)
+	deleted := s.cache.Delete(key)
+	log.Printf("[cache] DELETE key=%q found=%t", key, deleted)
+	return key, deleted, nil
 }
 // fetchCategory sends a single request to Ticketmaster for a category.
 func (s *EventService) fetchCategory(ctx context.Context, city, country, category string) ([]models.Event, error) {

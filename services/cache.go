@@ -50,7 +50,15 @@ func (c *EventCache) Set(key string, events []models.Event) {
 
 	c.items[key] = copyEvents(events)
 }
+//Delete cache category wish
+func (c *EventCache) Delete(key string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
+	_, existed := c.items[key]
+	delete(c.items, key)
+	return existed
+}
 // Clear removes all entries from the cache and returns the number of entries removed.
 func (c *EventCache) Clear() int {
 	c.mu.Lock()
