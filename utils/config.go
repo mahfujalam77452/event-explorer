@@ -18,6 +18,8 @@ type Config struct {
 
 	HTTPTimeout time.Duration
 	EventsPerCategory int
+
+	ApprovedTicketHosts []string
 }
 
 var Cfg *Config
@@ -46,10 +48,22 @@ func LoadConfig() (*Config,error) {
 	if cfg.TicketmasterAPIKey == "" {
 		missing = append(missing, "TICKETMASTER_API_KEY")
 	}
+		cfg.ApprovedTicketHosts = splitCSV(beego.AppConfig.DefaultString("approved_ticket_hosts", ""))
 
 	if len(missing) > 0 {
 		return cfg,fmt.Errorf("Missing environment variables : %s",strings.Join(missing,", "))
 	}
 
 	return  cfg,nil
+}
+
+// splitCSV converts "a, b,c" into ["a", "b", "c"] and ignores empty parts.
+func splitCSV(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		if p := strings.ToLower(strings.TrimSpace(part)); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

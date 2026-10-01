@@ -18,7 +18,7 @@ func init() {
 	beego.Router("/api/locations/:placeId", &controllers.APIController{}, "get:PlaceDetails")
 
 	// Ticket redirect (backend action)
-	beego.Router("/redirect/:eventId", &controllers.RedirectController{}, "get:Redirect")
+	beego.Router("/redirect/:eventId", &controllers.RedirectController{}, "get:GoToTickets")
 
 	//  Cache invalidation endpoint 
 	beego.Router("/admin/cache/clear", &controllers.CacheController{}, "get,post:Clear")
