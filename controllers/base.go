@@ -2,7 +2,8 @@ package controllers
 
 import (
 	"time"
-
+     "log"
+	 "net/http"
 	beego "github.com/beego/beego/v2/server/web"
 )
 
@@ -22,4 +23,13 @@ func (c *BaseController) Prepare() {
 func (c *BaseController) RenderPage(tpl, title string) {
 	c.TplName = tpl
 	c.Data["Title"] = title + " | Event Explorer"
+}
+
+func (c *BaseController) RenderPageStatus(status int, tpl, title string) {
+	c.RenderPage(tpl, title)
+	c.Ctx.Output.SetStatus(status)
+	if err := c.Render(); err != nil {
+		log.Printf("[render] %s failed: %v", tpl, err)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+	}
 }

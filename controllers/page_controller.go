@@ -28,10 +28,9 @@ func (c *PageController) Listing() {
 	city := strings.TrimSpace(c.GetString("city"))
 	country := strings.ToUpper(strings.TrimSpace(c.GetString("countryCode")))
 
-	if err := services.ValidateCityQuery(city, country); err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.RenderPage("listing.tpl", "Events")
+		if err := services.ValidateCityQuery(city, country); err != nil {
 		c.Data["PageError"] = "Please choose a city first to see its events."
+		c.RenderPageStatus(http.StatusBadRequest, "listing.tpl", "Events")
 		return
 	}
 
@@ -56,12 +55,11 @@ func (c *PageController) Details() {
 			return // The user left the page before the request completed.
 		}
 
-		status, message := detailsError(err)
+				status, message := detailsError(err)
 		log.Printf("[details] event %q failed (status %d): %v", eventID, status, err)
 
-		c.Ctx.Output.SetStatus(status)
-		c.RenderPage("details.tpl", "Event")
 		c.Data["PageError"] = message
+		c.RenderPageStatus(status, "details.tpl", "Event")
 		return
 	}
 

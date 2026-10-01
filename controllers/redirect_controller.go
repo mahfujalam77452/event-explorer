@@ -57,11 +57,10 @@ func (c *RedirectController) GoToTickets() {
 
 // fail renders a clear error page for the user using the error section of details.tpl.
 func (c *RedirectController) fail(status int, message string) {
-	c.Ctx.Output.SetStatus(status)
 	c.Ctx.Output.Header("Cache-Control", "no-store")
 
 	c.Data["BackURL"] = "/"
 	c.Data["BackLabel"] = "Back to search"
-	c.RenderPage("details.tpl", "Tickets")
 	c.Data["PageError"] = message
+	c.RenderPageStatus(status, "details.tpl", "Tickets")
 }
