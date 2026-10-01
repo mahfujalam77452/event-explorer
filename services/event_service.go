@@ -54,14 +54,16 @@ type EventService struct {
 	baseURL     string
 	apiKey      string
 	perCategory int
+	cache *EventCache
 }
 
-func NewEventService(client *http.Client, baseURL, apiKey string, perCategory int) *EventService {
+func NewEventService(client *http.Client, baseURL, apiKey string, perCategory int,cache *EventCache) *EventService {
 	return &EventService{
 		client:      client,
 		baseURL:     baseURL,
 		apiKey:      apiKey,
 		perCategory: perCategory,
+		cache: cache,
 	}
 }
 
@@ -123,11 +125,39 @@ func (s *EventService) fetchCategoryAsync(
 	begin := time.Now()
 	log.Printf("[events] %s: fetching...", category)
 
-	res.events, res.err = s.fetchCategory(ctx, city, country, category)
+	res.events, res.err = s.getCategory(ctx, city, country, category)
 
 	log.Printf("[events] %s: done in %s", category, time.Since(begin).Round(time.Millisecond))
 }
+// getCategory first checks the cache.
+// If the data is not found, it fetches the events from Ticketmaster and stores
+// the successful result in the cache.
+// Only successful results are cached; errors are never cached.
+func (s *EventService) getCategory(ctx context.Context, city, country, category string) ([]models.Event, error) {
+	key := CacheKey(city, country, category)
 
+	if events, ok := s.cache.Get(key); ok {
+		log.Printf("[cache] HIT   key=%q items=%d", key, len(events))
+		return events, nil
+	}
+	log.Printf("[cache] MISS  key=%q", key)
+
+	events, err := s.fetchCategory(ctx, city, country, category)
+	if err != nil {
+		return nil, err // Do not cache failed results.
+	}
+
+	s.cache.Set(key, events)
+	log.Printf("[cache] STORE key=%q items=%d", key, len(events))
+	return events, nil
+}
+
+// ClearCache invalidates the entire cache and returns the number of entries removed.
+func (s *EventService) ClearCache() int {
+	n := s.cache.Clear()
+	log.Printf("[cache] CLEARED %d entries", n)
+	return n
+}
 // fetchCategory sends a single request to Ticketmaster for a category.
 func (s *EventService) fetchCategory(ctx context.Context, city, country, category string) ([]models.Event, error) {
 	query := url.Values{}

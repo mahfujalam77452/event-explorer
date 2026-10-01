@@ -10,7 +10,7 @@ var (
 
 func Init(cfg *utils.Config) {
 	client := utils.NewHTTPClient(cfg.HTTPTimeout)
-
+    cache := NewEventCache()
 	Location = NewLocationService(client, cfg.GoogleBaseURL, cfg.GoogleAPIKey)
-	Events = NewEventService(client, cfg.TicketmasterBaseURL, cfg.TicketmasterAPIKey, cfg.EventsPerCategory)
+	Events = NewEventService(client, cfg.TicketmasterBaseURL, cfg.TicketmasterAPIKey, cfg.EventsPerCategory,cache)
 }
