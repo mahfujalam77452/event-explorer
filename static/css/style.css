@@ -104,10 +104,37 @@ h1, h2, h3 { line-height: 1.25; }
 .description { white-space: pre-line; }
 .details-body h2 { font-size: 1.15rem; margin: 24px 0 8px; }
 
+
+.error-page { text-align: center; padding: 60px 0; }
+.error-page h1 { margin-bottom: 8px; }
+.error-page .btn { margin-top: 20px; }
+
+
+.card-body h3, .meta, .details-body h1, .description { overflow-wrap: anywhere; }
+
+
+a:focus-visible, .btn:focus-visible, input:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+
+.btn { min-height: 44px; line-height: 1.2; display: inline-flex; align-items: center; justify-content: center; }
+
+img { max-width: 100%; }
+
+
+
 /* Mobile */
 @media (max-width: 600px) {
   .hero h1 { font-size: 1.5rem; }
   .search-form { flex-direction: column; }
   .search-form .btn { width: 100%; }
   .grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  main.container { padding-top: 16px; }
+  .details-body { padding: 16px; }
+  .section-title { font-size: 1.2rem; }
 }

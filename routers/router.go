@@ -2,11 +2,17 @@ package routers
 
 import (
 	"event-explorer/controllers"
+	"event-explorer/filters"
 
 	beego "github.com/beego/beego/v2/server/web"
 )
 
 func init() {
+	
+	// Filter ও error handler
+	filters.Register()
+	beego.ErrorController(&controllers.ErrorController{})
+	
 	
 	//  Frontend page route 
 	beego.Router("/", &controllers.PageController{}, "get:Home")
