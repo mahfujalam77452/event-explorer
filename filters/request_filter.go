@@ -14,7 +14,7 @@ const startKey = "request_start"
 // It is called once from routers/router.go.
 func Register() {
 	beego.InsertFilter("/*", beego.BeforeRouter, beforeRouter)
-	beego.InsertFilter("/*", beego.FinishRouter, finishRouter)
+	beego.InsertFilter("/*", beego.FinishRouter, finishRouter, beego.WithReturnOnOutput(false))
 }
 
 // beforeRouter runs before routing.
