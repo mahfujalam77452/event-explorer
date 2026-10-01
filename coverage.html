@@ -1,0 +1,1644 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>controllers: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">event-explorer/controllers/api_controller.go (0.0%)</option>
+				
+				<option value="file1">event-explorer/controllers/base.go (100.0%)</option>
+				
+				<option value="file2">event-explorer/controllers/cache_controller.go (100.0%)</option>
+				
+				<option value="file3">event-explorer/controllers/error_controller.go (100.0%)</option>
+				
+				<option value="file4">event-explorer/controllers/page_controller.go (97.4%)</option>
+				
+				<option value="file5">event-explorer/controllers/redirect_controller.go (96.3%)</option>
+				
+				<option value="file6">event-explorer/filters/request_filter.go (100.0%)</option>
+				
+				<option value="file7">event-explorer/main.go (0.0%)</option>
+				
+				<option value="file8">event-explorer/models/event.go (100.0%)</option>
+				
+				<option value="file9">event-explorer/models/location.go (100.0%)</option>
+				
+				<option value="file10">event-explorer/models/ticketmaster.go (100.0%)</option>
+				
+				<option value="file11">event-explorer/routers/router.go (100.0%)</option>
+				
+				<option value="file12">event-explorer/services/cache.go (100.0%)</option>
+				
+				<option value="file13">event-explorer/services/event_service.go (95.1%)</option>
+				
+				<option value="file14">event-explorer/services/location_service.go (88.6%)</option>
+				
+				<option value="file15">event-explorer/services/service.go (100.0%)</option>
+				
+				<option value="file16">event-explorer/utils/config.go (100.0%)</option>
+				
+				<option value="file17">event-explorer/utils/http_client.go (82.4%)</option>
+				
+				<option value="file18">event-explorer/utils/ticket_link.go (92.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package controllers
+
+import (
+        "context"
+        "errors"
+        "log"
+        "net/http"
+
+        "event-explorer/models"
+        "event-explorer/services"
+        "event-explorer/utils"
+
+        beego "github.com/beego/beego/v2/server/web"
+)
+
+// APIController: Just returning JSON
+type APIController struct {
+        beego.Controller
+}
+
+// GET /api/locations/autocomplete?input=tor&amp;sessionToken=xxx
+func (c *APIController) Autocomplete() <span class="cov0" title="0">{
+        suggestions, err := services.Location.Autocomplete(
+                c.Ctx.Request.Context(),
+                c.GetString("input"),
+                c.GetString("sessionToken"),
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                c.fail(err, "autocomplete")
+                return
+        }</span>
+        <span class="cov0" title="0">c.ok(map[string]interface{}{"suggestions": suggestions})</span>
+}
+
+// GET /api/locations/:placeId?sessionToken=xxx
+func (c *APIController) PlaceDetails() <span class="cov0" title="0">{
+        city, err := services.Location.PlaceDetails(
+                c.Ctx.Request.Context(),
+                c.Ctx.Input.Param(":placeId"),
+                c.GetString("sessionToken"),
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                c.fail(err, "place details")
+                return
+        }</span>
+        <span class="cov0" title="0">c.ok(city)</span> // {"city":"Toronto","countryCode":"CA"}
+}
+
+// Sends a successful JSON response. Google data will not be cached, so use no-store.
+func (c *APIController) ok(data interface{}) <span class="cov0" title="0">{
+        c.Ctx.Output.Header("Cache-Control", "no-store")
+        c.Data["json"] = data
+        _ = c.ServeJSON()
+}</span>
+
+// Converts the error into the appropriate HTTP status and a clear message.
+
+func (c *APIController) fail(err error, action string) <span class="cov0" title="0">{
+        status := http.StatusBadGateway
+        message := "City search is unavailable right now. Please try again."
+
+        switch </span>{
+        case errors.Is(err, context.Canceled):<span class="cov0" title="0">
+                // user cencel the request himself
+                return</span>
+        case errors.Is(err, services.ErrInvalidInput):<span class="cov0" title="0">
+                status = http.StatusBadRequest
+                message = "Invalid request."</span>
+        case errors.Is(err, models.ErrCityNotFound):<span class="cov0" title="0">
+                status = http.StatusNotFound
+                message = "Could not find a city for this place. Please choose another suggestion."</span>
+        case utils.IsTimeout(err):<span class="cov0" title="0">
+                status = http.StatusGatewayTimeout
+                message = "The city search took too long. Please try again."</span>
+        }
+
+        <span class="cov0" title="0">log.Printf("[api] %s failed (status %d): %v", action, status, err)
+
+        c.Ctx.Output.SetStatus(status)
+        c.Ctx.Output.Header("Cache-Control", "no-store")
+        c.Data["json"] = map[string]string{"error": message}
+        _ = c.ServeJSON()</span>
+}</pre>
+		
+		<pre class="file" id="file1" style="display: none">package controllers
+
+import (
+        "time"
+
+        beego "github.com/beego/beego/v2/server/web"
+)
+
+// BaseController 
+type BaseController struct {
+        beego.Controller
+}
+
+func (c *BaseController) Prepare() <span class="cov8" title="1">{
+        c.Data["SiteName"] = "Event Explorer"
+        c.Data["CurrentPath"] = c.Ctx.Request.URL.Path
+        c.Data["Year"] = time.Now().Year()
+        c.Data["Title"] = "Event Explorer"
+}</span>
+
+
+func (c *BaseController) RenderPage(tpl, title string) <span class="cov8" title="1">{
+        c.TplName = tpl
+        c.Data["Title"] = title + " | Event Explorer"
+}</pre>
+		
+		<pre class="file" id="file2" style="display: none">package controllers
+
+import (
+        "net/http"
+
+        "event-explorer/services"
+
+        beego "github.com/beego/beego/v2/server/web"
+)
+
+// CacheController handles endpoints related to cache management.
+type CacheController struct {
+        beego.Controller
+}
+
+// GET/POST /admin/cache/clear
+func (c *CacheController) Clear() <span class="cov8" title="1">{
+        cleared := services.Events.ClearCache()
+
+        c.Ctx.Output.SetStatus(http.StatusOK)
+        c.Ctx.Output.Header("Cache-Control", "no-store")
+        c.Data["json"] = map[string]interface{}{
+                "message": "cache cleared",
+                "cleared": cleared,
+        }
+        _ = c.ServeJSON()
+}</pre>
+		
+		<pre class="file" id="file3" style="display: none">package controllers
+
+import (
+        "time"
+
+        beego "github.com/beego/beego/v2/server/web"
+)
+
+// ErrorController handles Beego's built-in error pages,
+// such as invalid URLs, unsupported methods, and server errors.
+type ErrorController struct {
+        beego.Controller
+}
+
+func (c *ErrorController) show(heading, message string) <span class="cov8" title="1">{
+        c.Data["SiteName"] = "Event Explorer"
+        c.Data["Title"] = heading + " | Event Explorer"
+        c.Data["CurrentPath"] = c.Ctx.Request.URL.Path
+        c.Data["Year"] = time.Now().Year()
+        c.Data["Heading"] = heading
+        c.Data["Message"] = message
+        c.TplName = "error.tpl"
+}</span>
+
+// 404: The requested URL does not match any registered route.
+func (c *ErrorController) Error404() <span class="cov8" title="1">{
+        c.show("Page not found", "The page you are looking for does not exist or has moved.")
+}</span>
+
+// 405: The requested HTTP method is not supported for this route.
+func (c *ErrorController) Error405() <span class="cov8" title="1">{
+        c.show("Action not allowed", "This address does not support that kind of request.")
+}</span>
+
+// 500: An unexpected server error occurred.
+func (c *ErrorController) Error500() <span class="cov8" title="1">{
+        c.show("Something went wrong", "An unexpected error occurred on our side. Please try again in a moment.")
+}</pre>
+		
+		<pre class="file" id="file4" style="display: none">package controllers
+
+import (
+        "context"
+        "errors"
+        "log"
+        "net/http"
+        "net/url"
+        "strings"
+
+        "event-explorer/models"
+        "event-explorer/services"
+        "event-explorer/utils"
+)
+
+// PageController handles all server-side rendered HTML pages.
+type PageController struct {
+        BaseController
+}
+
+// GET /
+func (c *PageController) Home() <span class="cov8" title="1">{
+        c.RenderPage("home.tpl", "Find events in your city")
+}</span>
+
+// GET /events?city=Toronto&amp;countryCode=CA
+func (c *PageController) Listing() <span class="cov8" title="1">{
+        city := strings.TrimSpace(c.GetString("city"))
+        country := strings.ToUpper(strings.TrimSpace(c.GetString("countryCode")))
+
+        if err := services.ValidateCityQuery(city, country); err != nil </span><span class="cov8" title="1">{
+                c.Ctx.Output.SetStatus(http.StatusBadRequest)
+                c.RenderPage("listing.tpl", "Events")
+                c.Data["PageError"] = "Please choose a city first to see its events."
+                return
+        }</span>
+
+        <span class="cov8" title="1">sections := services.Events.GetListing(c.Ctx.Request.Context(), city, country)
+
+        c.RenderPage("listing.tpl", "Events in "+city)
+        c.Data["City"] = city
+        c.Data["CountryCode"] = country
+        c.Data["Sections"] = sections</span>
+}
+
+// GET /events/:eventId
+func (c *PageController) Details() <span class="cov8" title="1">{
+        eventID := c.Ctx.Input.Param(":eventId")
+
+        // Build the "Back" link based on the previous listing; use the home page for direct links.
+        c.Data["BackURL"], c.Data["BackLabel"] = c.backLink()
+
+        event, err := services.Events.GetEvent(c.Ctx.Request.Context(), eventID)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, context.Canceled) </span><span class="cov0" title="0">{
+                        return // The user left the page before the request completed.
+                }</span>
+
+                <span class="cov8" title="1">status, message := detailsError(err)
+                log.Printf("[details] event %q failed (status %d): %v", eventID, status, err)
+
+                c.Ctx.Output.SetStatus(status)
+                c.RenderPage("details.tpl", "Event")
+                c.Data["PageError"] = message
+                return</span>
+        }
+
+        <span class="cov8" title="1">c.RenderPage("details.tpl", event.Name)
+        c.Data["Event"] = event</span>
+}
+
+// backLink builds a URL back to the listing page when city and countryCode are provided in the query.
+func (c *PageController) backLink() (string, string) <span class="cov8" title="1">{
+        city := strings.TrimSpace(c.GetString("city"))
+        country := strings.ToUpper(strings.TrimSpace(c.GetString("countryCode")))
+
+        if services.ValidateCityQuery(city, country) == nil </span><span class="cov8" title="1">{
+                q := url.Values{}
+                q.Set("city", city)
+                q.Set("countryCode", country)
+                return "/events?" + q.Encode(), "Back to results"
+        }</span>
+        <span class="cov8" title="1">return "/", "Back to search"</span>
+}
+
+// detailsError maps errors to the appropriate HTTP status and user-friendly message.
+func detailsError(err error) (int, string) <span class="cov8" title="1">{
+        switch </span>{
+        case errors.Is(err, models.ErrInvalidEventID), errors.Is(err, models.ErrEventNotFound):<span class="cov8" title="1">
+                return http.StatusNotFound, "We could not find this event. It may have been removed or the link is incorrect."</span>
+        case utils.IsTimeout(err):<span class="cov8" title="1">
+                return http.StatusGatewayTimeout, "The event details took too long to load. Please try again."</span>
+        default:<span class="cov8" title="1">
+                return http.StatusBadGateway, "Event details are unavailable right now. Please try again later."</span>
+        }
+}</pre>
+		
+		<pre class="file" id="file5" style="display: none">package controllers
+
+import (
+        "context"
+        "errors"
+        "log"
+        "net/http"
+        "net/url"
+
+        "event-explorer/services"
+        "event-explorer/utils"
+)
+
+// RedirectController handles the backend action for the "View Tickets" button.
+// It does not render an HTML page on success; it only sends a 302 redirect.
+type RedirectController struct {
+        BaseController
+}
+
+// GET /redirect/:eventId
+func (c *RedirectController) GoToTickets() <span class="cov8" title="1">{
+        // The only input is the eventId from the URL path.
+        // Query parameters such as ?url=... are never read, so users cannot provide their own destination.
+        eventID := c.Ctx.Input.Param(":eventId")
+
+        // 1. Fetch the ticket URL from Ticketmaster on the server.
+        event, err := services.Events.GetEvent(c.Ctx.Request.Context(), eventID)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, context.Canceled) </span><span class="cov0" title="0">{
+                        return
+                }</span>
+                <span class="cov8" title="1">status, message := detailsError(err)
+                log.Printf("[redirect] event %q lookup failed (status %d): %v", eventID, status, err)
+                c.fail(status, message)
+                return</span>
+        }
+
+        // 2. Validate the approved HTTPS hostname.
+        <span class="cov8" title="1">target, err := utils.ValidateTicketURL(event.TicketURL, utils.Cfg.ApprovedTicketHosts)
+        if err != nil </span><span class="cov8" title="1">{
+                log.Printf("[redirect] event %q rejected: %v", eventID, err)
+                c.fail(http.StatusBadGateway, "Tickets for this event are not available right now.")
+                return
+        }</span>
+
+        // 3. Redirect to the validated ticket URL with a 302 status.
+        <span class="cov8" title="1">host := ""
+        if u, perr := url.Parse(target); perr == nil </span><span class="cov8" title="1">{
+                host = u.Hostname()
+        }</span>
+        <span class="cov8" title="1">log.Printf("[redirect] event %q -&gt; %s", eventID, host)
+
+        c.Ctx.Output.Header("Cache-Control", "no-store")
+        c.Redirect(target, http.StatusFound) // 302
+        c.StopRun()</span>
+}
+
+// fail renders a clear error page for the user using the error section of details.tpl.
+func (c *RedirectController) fail(status int, message string) <span class="cov8" title="1">{
+        c.Ctx.Output.SetStatus(status)
+        c.Ctx.Output.Header("Cache-Control", "no-store")
+
+        c.Data["BackURL"] = "/"
+        c.Data["BackLabel"] = "Back to search"
+        c.RenderPage("details.tpl", "Tickets")
+        c.Data["PageError"] = message
+}</pre>
+		
+		<pre class="file" id="file6" style="display: none">package filters
+
+import (
+        "log"
+        "time"
+
+        beego "github.com/beego/beego/v2/server/web"
+        "github.com/beego/beego/v2/server/web/context"
+)
+
+const startKey = "request_start"
+
+// Register enables all application filters.
+// It is called once from routers/router.go.
+func Register() <span class="cov8" title="1">{
+        beego.InsertFilter("/*", beego.BeforeRouter, beforeRouter)
+        beego.InsertFilter("/*", beego.FinishRouter, finishRouter)
+}</span>
+
+// beforeRouter runs before routing.
+// It records the request start time and sets security headers.
+func beforeRouter(ctx *context.Context) <span class="cov8" title="1">{
+        ctx.Input.SetData(startKey, time.Now())
+
+        ctx.Output.Header("X-Content-Type-Options", "nosniff")
+        ctx.Output.Header("X-Frame-Options", "DENY")
+        ctx.Output.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+}</span>
+
+// finishRouter runs after the response is completed.
+// It logs the HTTP method, path, status code, and request duration.
+// The query string is intentionally excluded to prevent sensitive data,
+// such as session tokens, from being written to logs.
+func finishRouter(ctx *context.Context) <span class="cov8" title="1">{
+        start, ok := ctx.Input.GetData(startKey).(time.Time)
+        if !ok </span><span class="cov8" title="1">{
+                return
+        }</span>
+
+        <span class="cov8" title="1">status := ctx.ResponseWriter.Status
+        if status == 0 </span><span class="cov8" title="1">{
+                status = 200
+        }</span>
+
+        <span class="cov8" title="1">log.Printf("[http] %s %s -&gt; %d (%s)",
+                ctx.Request.Method, ctx.Request.URL.Path, status,
+                time.Since(start).Round(time.Millisecond))</span>
+}</pre>
+		
+		<pre class="file" id="file7" style="display: none">package main
+
+import (
+        "log"
+
+        _ "event-explorer/routers"
+        "event-explorer/services"
+        "event-explorer/utils"
+
+        beego "github.com/beego/beego/v2/server/web"
+)
+
+func main() <span class="cov0" title="0">{
+        cfg, err := utils.LoadConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("config error: %v", err)
+        }</span>
+        <span class="cov0" title="0">utils.Cfg = cfg
+        services.Init(cfg)
+
+        log.Printf("config loaded: timeout=%s, events per category=%d",
+                cfg.HTTPTimeout, cfg.EventsPerCategory)
+
+        beego.Run()</span>
+}</pre>
+		
+		<pre class="file" id="file8" style="display: none">package models
+
+import (
+        "errors"
+        "regexp"
+        "strings"
+)
+
+var (
+        // ErrInvalidEventID: event ID 
+        ErrInvalidEventID = errors.New("invalid event id")
+        // ErrEventNotFound: Ticketmaster doesn't has this event
+        ErrEventNotFound = errors.New("event not found")
+)
+
+
+var eventIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
+//  URL has a valid id or not
+func IsValidEventID(id string) bool <span class="cov8" title="1">{
+        return eventIDPattern.MatchString(id)
+}</span>
+
+// The infomations hold by an event
+type Event struct {
+        ID          string
+        Name        string
+        ImageURL    string
+        Date        string 
+        Venue       string 
+        Location    string 
+        Description string
+        TicketURL   string `json:"-"` //not for HTML
+}
+
+// Validate ID and event without name is not granted
+func (e Event) Validate() error <span class="cov8" title="1">{
+        if !IsValidEventID(e.ID) </span><span class="cov8" title="1">{
+                return ErrInvalidEventID
+        }</span>
+        <span class="cov8" title="1">if strings.TrimSpace(e.Name) == "" </span><span class="cov8" title="1">{
+                return errors.New("event has no name")
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// listing page (music/sports)
+type Section struct {
+        Category string
+        Events   []Event
+        Error    string //message for user if applicable
+}
+
+func (s Section) HasError() bool  <span class="cov8" title="1">{ return s.Error != "" }</span>
+func (s Section) HasEvents() bool <span class="cov8" title="1">{ return len(s.Events) &gt; 0 }</span>
+
+// IsEmpty: no error but no event 
+func (s Section) IsEmpty() bool <span class="cov8" title="1">{ return s.Error == "" &amp;&amp; len(s.Events) == 0 }</span>
+
+// ListingData: all info for  listing.tpl 
+type ListingData struct {
+        City        string
+        CountryCode string
+        Sections    []Section
+}</pre>
+		
+		<pre class="file" id="file9" style="display: none">package models
+
+import (
+        "errors"
+        "strings"
+)
+
+// MaxSuggestions
+const MaxSuggestions = 5
+
+// ErrCityNotFounf
+var ErrCityNotFound = errors.New("city or country not found in place details")
+
+// Suggestion autocomplete result
+// JSON: {"placeId":"...","text":"Toronto, Canada"}
+type Suggestion struct {
+        PlaceID string `json:"placeId"`
+        Text    string `json:"text"`
+}
+
+// City response
+// JSON: {"placeId":"...","city":"Toronto","countryCode":"CA","label":"Toronto, Canada"}
+type City struct {
+        PlaceID     string `json:"placeId"`
+        Name        string `json:"city"`
+        CountryCode string `json:"countryCode"`
+        Label       string `json:"label"`
+}
+
+//For Google raw Response
+
+type GoogleText struct {
+        Text string `json:"text"`
+}
+
+type GoogleStructuredFormat struct {
+        MainText      GoogleText `json:"mainText"`
+        SecondaryText GoogleText `json:"secondaryText"`
+}
+
+type GooglePlacePrediction struct {
+        PlaceID          string                 `json:"placeId"`
+        Text             GoogleText             `json:"text"`
+        StructuredFormat GoogleStructuredFormat `json:"structuredFormat"`
+}
+
+type GoogleSuggestion struct {
+        PlacePrediction *GooglePlacePrediction `json:"placePrediction"`
+}
+
+// GoogleAutocompleteResponse: POST /v1/places:autocomplete 
+type GoogleAutocompleteResponse struct {
+        Suggestions []GoogleSuggestion `json:"suggestions"`
+}
+
+type GoogleAddressComponent struct {
+        LongText  string   `json:"longText"`
+        ShortText string   `json:"shortText"`
+        Types     []string `json:"types"`
+}
+
+// GooglePlaceDetailsResponse: GET /v1/places/{id} 
+type GooglePlaceDetailsResponse struct {
+        AddressComponents []GoogleAddressComponent `json:"addressComponents"`
+}
+
+// ToSuggestions raw to cleaner response।
+// placeId , MaxSuggestions return
+func (r GoogleAutocompleteResponse) ToSuggestions() []Suggestion <span class="cov8" title="1">{
+        result := make([]Suggestion, 0, MaxSuggestions)
+        for _, s := range r.Suggestions </span><span class="cov8" title="1">{
+                if len(result) &gt;= MaxSuggestions </span><span class="cov8" title="1">{
+                        break</span>
+                }
+                <span class="cov8" title="1">p := s.PlacePrediction
+                if p == nil || strings.TrimSpace(p.PlaceID) == "" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">text := suggestionText(p)
+                if text == "" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">result = append(result, Suggestion{
+                        PlaceID: strings.TrimSpace(p.PlaceID),
+                        Text:    text,
+                })</span>
+        }
+        <span class="cov8" title="1">return result</span>
+}
+
+//Converting  suggestionText Google Text "Toronto, ON, Canada" to "Toronto, Canada" 
+
+func suggestionText(p *GooglePlacePrediction) string <span class="cov8" title="1">{
+        main := strings.TrimSpace(p.StructuredFormat.MainText.Text)
+        secondary := strings.TrimSpace(p.StructuredFormat.SecondaryText.Text)
+
+        if main == "" </span><span class="cov8" title="1">{
+                return strings.TrimSpace(p.Text.Text) 
+        }</span>
+        <span class="cov8" title="1">if secondary == "" </span><span class="cov8" title="1">{
+                return main
+        }</span>
+
+        <span class="cov8" title="1">parts := strings.Split(secondary, ",")
+        country := strings.TrimSpace(parts[len(parts)-1])
+        if country == "" || strings.EqualFold(country, main) </span><span class="cov8" title="1">{
+                return main
+        }</span>
+        <span class="cov8" title="1">return main + ", " + country</span>
+}
+
+// The types of city may exist
+var cityComponentTypes = []string{
+        "locality",
+        "postal_town",
+        "administrative_area_level_2",
+        "administrative_area_level_1",
+}
+
+func findComponent(components []GoogleAddressComponent, wanted string) *GoogleAddressComponent <span class="cov8" title="1">{
+        for i := range components </span><span class="cov8" title="1">{
+                for _, t := range components[i].Types </span><span class="cov8" title="1">{
+                        if t == wanted </span><span class="cov8" title="1">{
+                                return &amp;components[i]
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Extract city,country code,label from ToCity addressComponents  
+
+func (r GooglePlaceDetailsResponse) ToCity(placeID string) (*City, error) <span class="cov8" title="1">{
+        name := ""
+        for _, t := range cityComponentTypes </span><span class="cov8" title="1">{
+                if c := findComponent(r.AddressComponents, t); c != nil &amp;&amp; strings.TrimSpace(c.LongText) != "" </span><span class="cov8" title="1">{
+                        name = strings.TrimSpace(c.LongText)
+                        break</span>
+                }
+        }
+
+        <span class="cov8" title="1">countryCode := ""
+        countryName := ""
+        if c := findComponent(r.AddressComponents, "country"); c != nil </span><span class="cov8" title="1">{
+                countryCode = strings.ToUpper(strings.TrimSpace(c.ShortText))
+                countryName = strings.TrimSpace(c.LongText)
+        }</span>
+
+        <span class="cov8" title="1">if name == "" || len(countryCode) != 2 </span><span class="cov8" title="1">{
+                return nil, ErrCityNotFound
+        }</span>
+        <span class="cov8" title="1">if countryName == "" </span><span class="cov8" title="1">{
+                countryName = countryCode 
+        }</span>
+
+        <span class="cov8" title="1">return &amp;City{
+                PlaceID:     placeID,
+                Name:        name,
+                CountryCode: countryCode,
+                Label:       name + ", " + countryName,
+        }, nil</span>
+}</pre>
+		
+		<pre class="file" id="file10" style="display: none">package models
+
+import (
+        "strings"
+        "time"
+)
+
+
+// Raw response for Ticketmaster
+
+type TMImage struct {
+        URL      string `json:"url"`
+        Ratio    string `json:"ratio"`
+        Width    int    `json:"width"`
+        Height   int    `json:"height"`
+        Fallback bool   `json:"fallback"`
+}
+
+// Helper struct for  TMVenue
+type CityName struct {
+                Name string `json:"name"`
+        }
+
+type State struct {
+                Name      string `json:"name"`
+                StateCode string `json:"stateCode"`
+        }
+type Country struct {
+                Name        string `json:"name"`
+                CountryCode string `json:"countryCode"`
+        }
+type Address struct {
+                Line1 string `json:"line1"`
+        }
+
+
+
+type TMVenue struct {
+        Name    string `json:"name"`
+        City  CityName  `json:"city"`
+        State  State `json:"state"`
+        Country  Country `json:"country"`
+        Address Address `json:"address"`
+}
+
+
+//helper struct for TMEvent
+type Start struct {
+                        LocalDate string `json:"localDate"`
+                        LocalTime string `json:"localTime"`
+                }
+
+type Dates  struct {
+                Start Start `json:"start"`
+        }
+type Embedded struct {
+                Venues []TMVenue `json:"venues"`
+        }
+
+
+type TMEvent struct {
+        ID          string    `json:"id"`
+        Name        string    `json:"name"`
+        URL         string    `json:"url"`
+        Info        string    `json:"info"`
+        Description string    `json:"description"`
+        PleaseNote  string    `json:"pleaseNote"`
+        Images      []TMImage `json:"images"`
+        Dates    Dates   `json:"dates"`
+        Embedded  Embedded `json:"_embedded"`
+}
+
+// TMEventsResponse: GET /events.json response
+
+type TMEventsResponse struct {
+        Embedded struct {
+                Events []TMEvent `json:"events"`
+        } `json:"_embedded"`
+}
+
+// Translate for Frontend data
+
+// Translate  raw event to view model 
+func (t TMEvent) ToEvent() Event <span class="cov8" title="1">{
+        ev := Event{
+                ID:          strings.TrimSpace(t.ID),
+                Name:        strings.TrimSpace(t.Name),
+                ImageURL:    pickImage(t.Images),
+                Date:        formatEventDate(t.Dates.Start.LocalDate, t.Dates.Start.LocalTime),
+                Description: firstNonEmpty(t.Description, t.Info, t.PleaseNote),
+                TicketURL:   strings.TrimSpace(t.URL),
+        }
+
+        if len(t.Embedded.Venues) &gt; 0 </span><span class="cov8" title="1">{
+                v := t.Embedded.Venues[0]
+                ev.Venue = strings.TrimSpace(v.Name)
+
+                state := firstNonEmpty(v.State.StateCode, v.State.Name)
+                country := firstNonEmpty(v.Country.Name, v.Country.CountryCode)
+                ev.Location = joinNonEmpty(", ",
+                        v.Name, v.Address.Line1, v.City.Name, state, country)
+        }</span>
+        <span class="cov8" title="1">return ev</span>
+}
+
+//Reform  ToEvents List : truncate illegal and duplicate event .
+// return at most 6 events
+func (r TMEventsResponse) ToEvents(limit int) []Event <span class="cov8" title="1">{
+        events := make([]Event, 0, limit)
+        seen := make(map[string]bool)
+
+        for _, raw := range r.Embedded.Events </span><span class="cov8" title="1">{
+                if limit &gt; 0 &amp;&amp; len(events) &gt;= limit </span><span class="cov8" title="1">{
+                        break</span>
+                }
+                <span class="cov8" title="1">ev := raw.ToEvent()
+                if ev.Validate() != nil || seen[ev.ID] </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">seen[ev.ID] = true
+                events = append(events, ev)</span>
+        }
+        <span class="cov8" title="1">return events</span>
+}
+
+//  helper 
+
+// pickImage selects the smallest image with a 16:9 aspect ratio and a width of 500px or more
+// for faster loading. If none is found, it selects the largest image.
+
+func pickImage(images []TMImage) string <span class="cov8" title="1">{
+        var best *TMImage
+        for i := range images </span><span class="cov8" title="1">{
+                img := &amp;images[i]
+                if strings.TrimSpace(img.URL) == "" </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">if best == nil || betterImage(img, best) </span><span class="cov8" title="1">{
+                        best = img
+                }</span>
+        }
+        <span class="cov8" title="1">if best == nil </span><span class="cov8" title="1">{
+                return ""
+        }</span>
+        <span class="cov8" title="1">return best.URL</span>
+}
+
+func betterImage(a, b *TMImage) bool <span class="cov8" title="1">{
+        aGood := a.Ratio == "16_9" &amp;&amp; a.Width &gt;= 500
+        bGood := b.Ratio == "16_9" &amp;&amp; b.Width &gt;= 500
+        if aGood != bGood </span><span class="cov8" title="1">{
+                return aGood
+        }</span>
+        <span class="cov8" title="1">if aGood </span><span class="cov8" title="1">{
+                return a.Width &lt; b.Width
+        }</span>
+        <span class="cov8" title="1">return a.Width &gt; b.Width</span>
+}
+
+// formatEventDate "2026-10-12" + "19:30:00" -&gt; "Mon, 12 Oct 2026, 7:30 PM" 
+
+func formatEventDate(localDate, localTime string) string <span class="cov8" title="1">{
+        d, err := time.Parse("2006-01-02", strings.TrimSpace(localDate))
+        if err != nil </span><span class="cov8" title="1">{
+                return ""
+        }</span>
+        <span class="cov8" title="1">out := d.Format("Mon, 2 Jan 2006")
+
+        if t, err := time.Parse("15:04:05", strings.TrimSpace(localTime)); err == nil </span><span class="cov8" title="1">{
+                out += ", " + t.Format("3:04 PM")
+        }</span>
+        <span class="cov8" title="1">return out</span>
+}
+
+func firstNonEmpty(values ...string) string <span class="cov8" title="1">{
+        for _, v := range values </span><span class="cov8" title="1">{
+                if s := strings.TrimSpace(v); s != "" </span><span class="cov8" title="1">{
+                        return s
+                }</span>
+        }
+        <span class="cov8" title="1">return ""</span>
+}
+
+func joinNonEmpty(sep string, values ...string) string <span class="cov8" title="1">{
+        parts := make([]string, 0, len(values))
+        seen := make(map[string]bool)
+        for _, v := range values </span><span class="cov8" title="1">{
+                s := strings.TrimSpace(v)
+                if s != "" &amp;&amp; !seen[s] </span><span class="cov8" title="1">{
+                        seen[s] = true
+                        parts = append(parts, s)
+                }</span>
+        }
+        <span class="cov8" title="1">return strings.Join(parts, sep)</span>
+}</pre>
+		
+		<pre class="file" id="file11" style="display: none">package routers
+
+import (
+        "event-explorer/controllers"
+        "event-explorer/filters"
+
+        beego "github.com/beego/beego/v2/server/web"
+)
+
+func init() <span class="cov8" title="1">{
+        
+        // Filter ও error handler
+        filters.Register()
+        beego.ErrorController(&amp;controllers.ErrorController{})
+        
+        
+        //  Frontend page route 
+        beego.Router("/", &amp;controllers.PageController{}, "get:Home")
+        beego.Router("/events", &amp;controllers.PageController{}, "get:Listing")
+        beego.Router("/events/:eventId", &amp;controllers.PageController{}, "get:Details")
+
+        //  Supporting API route (JSON) 
+        beego.Router("/api/locations/autocomplete", &amp;controllers.APIController{}, "get:Autocomplete")
+        beego.Router("/api/locations/:placeId", &amp;controllers.APIController{}, "get:PlaceDetails")
+
+        // Ticket redirect (backend action)
+        beego.Router("/redirect/:eventId", &amp;controllers.RedirectController{}, "get:GoToTickets")
+
+        //  Cache invalidation endpoint 
+        beego.Router("/admin/cache/clear", &amp;controllers.CacheController{}, "get,post:Clear")
+}</pre>
+		
+		<pre class="file" id="file12" style="display: none">package services
+
+import (
+        "strings"
+        "sync"
+
+        "event-explorer/models"
+)
+
+// EventCache is a shared in-memory map.
+// Since multiple goroutines and requests may access it concurrently,
+// all access is protected by a mutex.
+type EventCache struct {
+        mu    sync.RWMutex
+        items map[string][]models.Event
+}
+
+func NewEventCache() *EventCache <span class="cov8" title="1">{
+        return &amp;EventCache{items: make(map[string][]models.Event)}
+}</span>
+
+// CacheKey creates a unique key from the city, country, and category.
+// The key is case-insensitive: "Toronto" and "toronto" produce the same key.
+func CacheKey(city, country, category string) string <span class="cov8" title="1">{
+        return strings.ToLower(strings.TrimSpace(city)) + "|" +
+                strings.ToUpper(strings.TrimSpace(country)) + "|" +
+                strings.ToLower(strings.TrimSpace(category))
+}</span>
+
+// Get returns a copy of the event list and true if the key exists.
+// RLock is used because this operation only reads data,
+// allowing multiple goroutines to read concurrently.
+func (c *EventCache) Get(key string) ([]models.Event, bool) <span class="cov8" title="1">{
+        c.mu.RLock()
+        defer c.mu.RUnlock()
+
+        events, ok := c.items[key]
+        if !ok </span><span class="cov8" title="1">{
+                return nil, false
+        }</span>
+        <span class="cov8" title="1">return copyEvents(events), true</span>
+}
+
+// Set stores the event list in the cache.
+// Lock is used because this operation modifies the shared map,
+// preventing other goroutines from reading or writing at the same time.
+func (c *EventCache) Set(key string, events []models.Event) <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        c.items[key] = copyEvents(events)
+}</span>
+
+// Clear removes all entries from the cache and returns the number of entries removed.
+func (c *EventCache) Clear() int <span class="cov8" title="1">{
+        c.mu.Lock()
+        defer c.mu.Unlock()
+
+        n := len(c.items)
+        c.items = make(map[string][]models.Event)
+        return n
+}</span>
+
+// Len returns the current number of entries in the cache.
+func (c *EventCache) Len() int <span class="cov8" title="1">{
+        c.mu.RLock()
+        defer c.mu.RUnlock()
+        return len(c.items)
+}</span>
+
+// copyEvents creates a separate copy of the slice so that external code
+// cannot modify the data stored inside the cache.
+func copyEvents(in []models.Event) []models.Event <span class="cov8" title="1">{
+        out := make([]models.Event, len(in))
+        copy(out, in)
+        return out
+}</pre>
+		
+		<pre class="file" id="file13" style="display: none">package services
+
+import (
+        "context"
+        "fmt"
+        "log"
+        "errors"
+        "net/http"
+        "net/url"
+        "regexp"
+        "strconv"
+        "strings"
+        "time"
+        "unicode/utf8"
+
+        "event-explorer/models"
+        "event-explorer/utils"
+)
+
+const (
+        CategoryMusic  = "Music"
+        CategorySports = "Sports"
+)
+
+// Categories: How we will the categories in listing page
+var Categories = []string{CategoryMusic, CategorySports}
+
+// categoryResult represents the result produced by a goroutine.
+// This result is sent through a channel.
+type categoryResult struct {
+        index    int    // Position in the Categories list, used to preserve the original order.
+        category string
+        events   []models.Event
+        err      error
+}
+
+var countryCodePattern = regexp.MustCompile(`^[A-Za-z]{2}$`)
+
+// Validate city and countryCode 
+func ValidateCityQuery(city, country string) error <span class="cov8" title="1">{
+        city = strings.TrimSpace(city)
+        if city == "" || utf8.RuneCountInString(city) &gt; 100 </span><span class="cov8" title="1">{
+                return fmt.Errorf("%w: city", ErrInvalidInput)
+        }</span>
+        <span class="cov8" title="1">if !countryCodePattern.MatchString(country) </span><span class="cov8" title="1">{
+                return fmt.Errorf("%w: countryCode", ErrInvalidInput)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// EventService talk with Ticketmaster Discovery API 
+type EventService struct {
+        client      *http.Client
+        baseURL     string
+        apiKey      string
+        perCategory int
+        cache *EventCache
+}
+
+func NewEventService(client *http.Client, baseURL, apiKey string, perCategory int,cache *EventCache) *EventService <span class="cov8" title="1">{
+        return &amp;EventService{
+                client:      client,
+                baseURL:     baseURL,
+                apiKey:      apiKey,
+                perCategory: perCategory,
+                cache: cache,
+        }
+}</span>
+
+// GetListing fetches both categories concurrently.
+// If one category fails, that section contains an error while the other section remains available.
+func (s *EventService) GetListing(ctx context.Context, city, country string) []models.Section <span class="cov8" title="1">{
+        start := time.Now()
+
+        // Buffered channel with a capacity equal to the number of goroutines.
+        // This prevents goroutines from getting blocked while sending their results
+        // and helps avoid goroutine leaks.
+        results := make(chan categoryResult, len(Categories))
+
+        // Step 1: Start all goroutines first without waiting for any of them to finish.
+        for i, category := range Categories </span><span class="cov8" title="1">{
+                go s.fetchCategoryAsync(ctx, i, category, city, country, results)
+        }</span>
+        <span class="cov8" title="1">log.Printf("[events] started %d goroutines for %s,%s", len(Categories), city, country)
+
+        // Step 2: Collect exactly one result from the channel for each category.
+        sections := make([]models.Section, len(Categories))
+        for range Categories </span><span class="cov8" title="1">{
+                r := &lt;-results
+
+                section := models.Section{Category: r.category}
+                if r.err != nil </span><span class="cov8" title="1">{
+                        log.Printf("[events] %s for %s,%s failed: %v", r.category, city, country, r.err)
+                        section.Error = friendlyError(r.category, r.err)
+                }</span> else<span class="cov8" title="1"> {
+                        section.Events = r.events
+                }</span>
+
+                // Store the section at its original index, regardless of the order
+                // in which the goroutines finish.
+                <span class="cov8" title="1">sections[r.index] = section</span>
+        }
+
+        <span class="cov8" title="1">log.Printf("[events] listing %s,%s built in %s", city, country, time.Since(start).Round(time.Millisecond))
+        return sections</span>
+}
+
+// fetchCategoryAsync runs inside a goroutine and always sends exactly one result to the channel.
+func (s *EventService) fetchCategoryAsync(
+        ctx context.Context, index int, category, city, country string, out chan&lt;- categoryResult,
+) <span class="cov8" title="1">{
+        res := categoryResult{index: index, category: category}
+
+        // Recover from any panic so that it does not crash the entire server.
+        // The deferred function also guarantees that a result is sent to the channel,
+        // preventing the receiver from waiting indefinitely.
+        defer func() </span><span class="cov8" title="1">{
+                if r := recover(); r != nil </span><span class="cov0" title="0">{
+                        res.events = nil
+                        res.err = fmt.Errorf("panic in %s worker: %v", category, r)
+                }</span>
+                <span class="cov8" title="1">out &lt;- res</span>
+        }()
+
+        <span class="cov8" title="1">begin := time.Now()
+        log.Printf("[events] %s: fetching...", category)
+
+        res.events, res.err = s.getCategory(ctx, city, country, category)
+
+        log.Printf("[events] %s: done in %s", category, time.Since(begin).Round(time.Millisecond))</span>
+}
+// getCategory first checks the cache.
+// If the data is not found, it fetches the events from Ticketmaster and stores
+// the successful result in the cache.
+// Only successful results are cached; errors are never cached.
+func (s *EventService) getCategory(ctx context.Context, city, country, category string) ([]models.Event, error) <span class="cov8" title="1">{
+        key := CacheKey(city, country, category)
+
+        if events, ok := s.cache.Get(key); ok </span><span class="cov8" title="1">{
+                log.Printf("[cache] HIT   key=%q items=%d", key, len(events))
+                return events, nil
+        }</span>
+        <span class="cov8" title="1">log.Printf("[cache] MISS  key=%q", key)
+
+        events, err := s.fetchCategory(ctx, city, country, category)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err // Do not cache failed results.
+        }</span>
+
+        <span class="cov8" title="1">s.cache.Set(key, events)
+        log.Printf("[cache] STORE key=%q items=%d", key, len(events))
+        return events, nil</span>
+}
+
+// ClearCache invalidates the entire cache and returns the number of entries removed.
+func (s *EventService) ClearCache() int <span class="cov8" title="1">{
+        n := s.cache.Clear()
+        log.Printf("[cache] CLEARED %d entries", n)
+        return n
+}</span>
+// fetchCategory sends a single request to Ticketmaster for a category.
+func (s *EventService) fetchCategory(ctx context.Context, city, country, category string) ([]models.Event, error) <span class="cov8" title="1">{
+        query := url.Values{}
+        query.Set("apikey", s.apiKey)
+        query.Set("city", city)
+        query.Set("countryCode", country)
+        query.Set("classificationName", category)
+        query.Set("size", strconv.Itoa(s.perCategory))
+
+        endpoint := s.baseURL + "/events.json?" + query.Encode()
+
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">var resp models.TMEventsResponse
+        if err := utils.DoJSON(s.client, req, &amp;resp); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return resp.ToEvents(s.perCategory), nil</span>
+}
+// GetEvent fetches the complete details of an event directly from Ticketmaster
+// using GET /events/{id}.json.
+// It fetches the event by ID instead of relying on the listing, which supports direct links.
+func (s *EventService) GetEvent(ctx context.Context, id string) (*models.Event, error) <span class="cov8" title="1">{
+        // Validate the ID before using it in the URL to prevent path injection.
+        if !models.IsValidEventID(id) </span><span class="cov8" title="1">{
+                return nil, models.ErrInvalidEventID
+        }</span>
+
+        <span class="cov8" title="1">query := url.Values{}
+        query.Set("apikey", s.apiKey)
+
+        endpoint := s.baseURL + "/events/" + url.PathEscape(id) + ".json?" + query.Encode()
+
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">var raw models.TMEvent
+        if err := utils.DoJSON(s.client, req, &amp;raw); err != nil </span><span class="cov8" title="1">{
+                var httpErr *utils.HTTPError
+                if errors.As(err, &amp;httpErr) &amp;&amp; httpErr.StatusCode == http.StatusNotFound </span><span class="cov8" title="1">{
+                        return nil, models.ErrEventNotFound
+                }</span>
+                <span class="cov8" title="1">return nil, err</span>
+        }
+
+        <span class="cov8" title="1">event := raw.ToEvent()
+        if err := event.Validate(); err != nil </span><span class="cov8" title="1">{
+                // Ticketmaster responded, but the event data is not usable.
+                return nil, models.ErrEventNotFound
+        }</span>
+        <span class="cov8" title="1">return &amp;event, nil</span>
+}
+// friendlyError for user
+func friendlyError(category string, err error) string <span class="cov8" title="1">{
+        if utils.IsTimeout(err) </span><span class="cov8" title="1">{
+                return fmt.Sprintf("%s events took too long to load. Please try again.", category)
+        }</span>
+        <span class="cov8" title="1">return fmt.Sprintf("%s events are unavailable right now. Please try again later.", category)</span>
+}</pre>
+		
+		<pre class="file" id="file14" style="display: none">package services
+
+import (
+        "bytes"
+        "context"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "net/http"
+        "net/url"
+        "regexp"
+        "strings"
+        "unicode/utf8"
+
+        "event-explorer/models"
+        "event-explorer/utils"
+)
+
+const (
+        minInputLength = 3
+        maxInputLength = 100
+)
+
+// if input, sessionToken or placeId is not valid
+var ErrInvalidInput = errors.New("invalid input")
+
+var (
+        // session token of google
+        sessionTokenPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{8,36}$`)
+        // placeId URL 
+        placeIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`)
+)
+
+// LocationService Google Places API (New)
+type LocationService struct {
+        client  *http.Client
+        baseURL string
+        apiKey  string
+}
+
+func NewLocationService(client *http.Client, baseURL, apiKey string) *LocationService <span class="cov8" title="1">{
+        return &amp;LocationService{client: client, baseURL: baseURL, apiKey: apiKey}
+}</span>
+
+// Autocomplete suggestion 
+//return empty array if inputlenght &lt; 3
+func (s *LocationService) Autocomplete(ctx context.Context, input, sessionToken string) ([]models.Suggestion, error) <span class="cov8" title="1">{
+        input = strings.TrimSpace(input)
+        length := utf8.RuneCountInString(input)
+
+        if length &lt; minInputLength </span><span class="cov8" title="1">{
+                return []models.Suggestion{}, nil
+        }</span>
+        <span class="cov8" title="1">if length &gt; maxInputLength </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("%w: input too long", ErrInvalidInput)
+        }</span>
+        <span class="cov8" title="1">if !sessionTokenPattern.MatchString(sessionToken) </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("%w: bad session token", ErrInvalidInput)
+        }</span>
+
+        <span class="cov8" title="1">payload, err := json.Marshal(map[string]interface{}{
+                "input":                input,
+                "includedPrimaryTypes": []string{"(cities)"},
+                "sessionToken":         sessionToken,
+                "languageCode":         "en", // Ticketmaster requere
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+                s.baseURL+"/v1/places:autocomplete", bytes.NewReader(payload))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+        req.Header.Set("X-Goog-Api-Key", s.apiKey)
+
+        var resp models.GoogleAutocompleteResponse
+        if err := utils.DoJSON(s.client, req, &amp;resp); err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return resp.ToSuggestions(), nil</span>
+}
+
+// PlaceDetails : return   city and country code from placeID
+func (s *LocationService) PlaceDetails(ctx context.Context, placeID, sessionToken string) (*models.City, error) <span class="cov8" title="1">{
+        if !placeIDPattern.MatchString(placeID) </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("%w: bad place id", ErrInvalidInput)
+        }</span>
+        <span class="cov8" title="1">if !sessionTokenPattern.MatchString(sessionToken) </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("%w: bad session token", ErrInvalidInput)
+        }</span>
+
+        <span class="cov8" title="1">endpoint := fmt.Sprintf("%s/v1/places/%s?sessionToken=%s&amp;languageCode=en",
+                s.baseURL, url.PathEscape(placeID), url.QueryEscape(sessionToken))
+
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("X-Goog-Api-Key", s.apiKey)
+        req.Header.Set("X-Goog-FieldMask", "addressComponents")
+
+        var resp models.GooglePlaceDetailsResponse
+        if err := utils.DoJSON(s.client, req, &amp;resp); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+    <span class="cov8" title="1">return resp.ToCity(placeID)</span>
+}</pre>
+		
+		<pre class="file" id="file15" style="display: none">package services
+
+import "event-explorer/utils"
+
+//calling each service by calling init() from main
+var (
+        Location *LocationService
+        Events   *EventService
+)
+
+func Init(cfg *utils.Config) <span class="cov8" title="1">{
+        client := utils.NewHTTPClient(cfg.HTTPTimeout)
+    cache := NewEventCache()
+        Location = NewLocationService(client, cfg.GoogleBaseURL, cfg.GoogleAPIKey)
+        Events = NewEventService(client, cfg.TicketmasterBaseURL, cfg.TicketmasterAPIKey, cfg.EventsPerCategory,cache)
+}</pre>
+		
+		<pre class="file" id="file16" style="display: none">package utils
+
+import (
+        "fmt"
+        "os"
+        "strings"
+        "time"
+        beego "github.com/beego/beego/v2/server/web"
+        "github.com/joho/godotenv"
+)
+
+type Config struct {
+        GoogleAPIKey string
+        TicketmasterAPIKey string
+
+        GoogleBaseURL string
+        TicketmasterBaseURL string
+
+        HTTPTimeout time.Duration
+        EventsPerCategory int
+
+        ApprovedTicketHosts []string
+}
+
+var Cfg *Config
+
+func LoadConfig() (*Config,error) <span class="cov8" title="1">{
+        _ = godotenv.Load()
+
+        cfg := &amp;Config{
+        GoogleAPIKey : strings.TrimSpace(os.Getenv("GOOGLE_API_KEY")),
+        TicketmasterAPIKey: strings.TrimSpace(os.Getenv("TICKETMASTER_API_KEY")),
+
+        GoogleBaseURL : strings.TrimSpace(
+                beego.AppConfig.DefaultString("google_base_url","https://places.googleapis.com")),
+        TicketmasterBaseURL : strings.TrimSpace(
+                beego.AppConfig.DefaultString("ticketmaster_base_url","https://app.ticketmaster.com/discovery/v2")),
+
+        HTTPTimeout : time.Duration(
+                beego.AppConfig.DefaultInt("http_timeout_seconds", 10))*time.Second,
+        EventsPerCategory : 6,
+        }
+
+        var missing []string
+        if cfg.GoogleAPIKey == "" </span><span class="cov8" title="1">{
+                missing = append(missing, "GOOGLE_API_KEY")
+        }</span>
+        <span class="cov8" title="1">if cfg.TicketmasterAPIKey == "" </span><span class="cov8" title="1">{
+                missing = append(missing, "TICKETMASTER_API_KEY")
+        }</span>
+                <span class="cov8" title="1">cfg.ApprovedTicketHosts = splitCSV(beego.AppConfig.DefaultString("approved_ticket_hosts", ""))
+
+        if len(missing) &gt; 0 </span><span class="cov8" title="1">{
+                return cfg,fmt.Errorf("Missing environment variables : %s",strings.Join(missing,", "))
+        }</span>
+
+        <span class="cov8" title="1">return  cfg,nil</span>
+}
+
+// splitCSV converts "a, b,c" into ["a", "b", "c"] and ignores empty parts.
+func splitCSV(s string) []string <span class="cov8" title="1">{
+        var out []string
+        for _, part := range strings.Split(s, ",") </span><span class="cov8" title="1">{
+                if p := strings.ToLower(strings.TrimSpace(part)); p != "" </span><span class="cov8" title="1">{
+                        out = append(out, p)
+                }</span>
+        }
+        <span class="cov8" title="1">return out</span>
+}</pre>
+		
+		<pre class="file" id="file17" style="display: none">package utils
+
+import (
+        "encoding/json"
+        "errors"
+        "fmt"
+        "io"
+        "net"
+        "net/http"
+        "net/url"
+        "time"
+)
+
+type HTTPError struct {
+        StatusCode int
+        Body string
+}
+
+func (e *HTTPError)Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf("upstream returned status %d",e.StatusCode)
+}</span>
+
+func NewHTTPClient (timeout time.Duration) *http.Client <span class="cov8" title="1">{
+        return &amp;http.Client{Timeout: timeout}
+}</span>
+
+// A common function for make HTTP request and get the response in go Struct 
+
+func DoJSON(client *http.Client, req *http.Request, out interface{}) error <span class="cov8" title="1">{
+        resp, err := client.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
+                var uerr *url.Error
+                if errors.As(err, &amp;uerr) </span><span class="cov8" title="1">{
+                        return fmt.Errorf("request to %s failed: %w", req.URL.Host, uerr.Err)
+                }</span>
+                <span class="cov0" title="0">return err</span>
+        }
+        <span class="cov8" title="1">defer resp.Body.Close()
+
+        if resp.StatusCode &lt; 200 || resp.StatusCode &gt; 299 </span><span class="cov0" title="0">{
+                body, _ := io.ReadAll(resp.Body)
+                return &amp;HTTPError{
+                        StatusCode: resp.StatusCode,
+                        Body:string(body),
+                }
+        }</span>
+
+        <span class="cov8" title="1">if out == nil </span><span class="cov8" title="1">{
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">return json.NewDecoder(resp.Body).Decode(out)</span>
+}
+
+func IsTimeout (err error) bool <span class="cov8" title="1">{
+        var ne net.Error
+
+        return errors.As(err,&amp;ne) &amp;&amp; ne.Timeout()
+}</span>
+
+</pre>
+		
+		<pre class="file" id="file18" style="display: none">package utils
+
+import (
+        "errors"
+        "fmt"
+        "net/url"
+        "strings"
+)
+
+// ErrUnapprovedTicketURL indicates that the ticket URL is unsafe or not approved.
+var ErrUnapprovedTicketURL = errors.New("ticket url is not allowed")
+
+// ValidateTicketURL validates a URL before redirecting to it.
+// It returns the cleaned URL if all validation checks pass; otherwise, it returns an error.
+//
+// Requirements:
+//   - Must use HTTPS (rejects HTTP, javascript:, data:, etc.)
+//   - Must not contain a username or password
+//     (prevents tricks such as https://ticketmaster.com@evil.com)
+//   - If a port is specified, it must be 443
+//   - The hostname must match an approved domain or one of its subdomains
+func ValidateTicketURL(raw string, approvedHosts []string) (string, error) <span class="cov8" title="1">{
+        raw = strings.TrimSpace(raw)
+        if raw == "" </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("%w: empty url", ErrUnapprovedTicketURL)
+        }</span>
+
+        <span class="cov8" title="1">u, err := url.Parse(raw)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("%w: unparsable url", ErrUnapprovedTicketURL)
+        }</span>
+
+        <span class="cov8" title="1">if u.Scheme != "https" </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("%w: scheme %q is not https", ErrUnapprovedTicketURL, u.Scheme)
+        }</span>
+        <span class="cov8" title="1">if u.User != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("%w: credentials in url", ErrUnapprovedTicketURL)
+        }</span>
+        <span class="cov8" title="1">if port := u.Port(); port != "" &amp;&amp; port != "443" </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("%w: unexpected port %s", ErrUnapprovedTicketURL, port)
+        }</span>
+
+        <span class="cov8" title="1">host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+        if host == "" </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("%w: empty host", ErrUnapprovedTicketURL)
+        }</span>
+        <span class="cov8" title="1">if !isApprovedHost(host, approvedHosts) </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("%w: host %q is not approved", ErrUnapprovedTicketURL, host)
+        }</span>
+
+        <span class="cov8" title="1">return u.String(), nil</span>
+}
+
+// isApprovedHost returns true if the host exactly matches an approved domain
+// or is a valid subdomain of an approved domain.
+// A simple strings.HasSuffix check would also allow domains such as
+// "evilticketmaster.com", so the suffix must be preceded by ".".
+func isApprovedHost(host string, approved []string) bool <span class="cov8" title="1">{
+        for _, a := range approved </span><span class="cov8" title="1">{
+                a = strings.ToLower(strings.TrimSpace(a))
+                if a == "" </span><span class="cov0" title="0">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">if host == a || strings.HasSuffix(host, "."+a) </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov8" title="1">return false</span>
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

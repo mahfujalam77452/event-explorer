@@ -28,4 +28,5 @@ func init() {
 
 	//  Cache invalidation endpoint 
 	beego.Router("/admin/cache/clear", &controllers.CacheController{}, "get,post:Clear")
+	beego.Router("/admin/cache/invalidate", &controllers.CacheController{}, "get,post,delete:Invalidate")
 }
