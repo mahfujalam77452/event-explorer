@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"fmt"
 	"io"
 	"net"
@@ -16,8 +17,13 @@ type HTTPError struct {
 	Body string
 }
 
-func (e *HTTPError)Error() string {
-	return fmt.Sprintf("upstream returned status %d",e.StatusCode)
+func (e *HTTPError) Error() string {
+	if e.Body == "" {
+		return fmt.Sprintf("upstream returned status %d", e.StatusCode)
+	}
+	
+	return fmt.Sprintf("upstream returned status %d: %s",
+		e.StatusCode, strings.Join(strings.Fields(e.Body), " "))
 }
 
 func NewHTTPClient (timeout time.Duration) *http.Client {
